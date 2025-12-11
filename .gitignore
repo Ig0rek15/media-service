@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+.venv/
+venv/
+*.sqlite3
+
+# Django
+/staticfiles
+/media
+
+# Docker
+*.env
+docker-compose.override.yml
+
+# IDEs
+.vscode/
+.idea/
