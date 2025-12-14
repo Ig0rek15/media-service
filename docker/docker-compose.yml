@@ -1,0 +1,86 @@
+version: '3.9'
+
+services:
+  db:
+    image: postgres:15
+    container_name: media_db
+    environment:
+      POSTGRES_DB: media
+      POSTGRES_USER: media
+      POSTGRES_PASSWORD: media
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: media_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbit
+      RABBITMQ_DEFAULT_PASS: rabbit
+    ports:
+      - "5672:5672"
+      - "15672:15672"  # web UI
+
+  redis:
+    image: redis:7
+    container_name: media_redis
+    ports:
+      - "6379:6379"
+
+  minio:
+    image: minio/minio
+    container_name: media_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  web:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: media_web
+    working_dir: /app/backend
+    command: >
+      bash -c "
+      python manage.py migrate &&
+      gunicorn project.wsgi:application -b 0.0.0.0:8000
+      "
+    volumes:
+      - ..:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - minio
+      - rabbitmq
+      - redis
+    env_file:
+      - ../.env
+
+  worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: media_worker
+    working_dir: /app/backend
+    command: celery -A project worker -l info -Q media.default
+    volumes:
+      - ..:/app
+    depends_on:
+      - web
+      - rabbitmq
+      - redis
+    env_file:
+      - ../.env
+
+volumes:
+  pgdata:
+  minio_data:
