@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
 
-    'mediaapp.apps.MediaappConfig'
+    'mediaapp.apps.MediaappConfig',
+    'storages'
 ]
 
 MIDDLEWARE = [
@@ -120,7 +121,32 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024
+
 
 # celery
 CELERY_BROKER_URL = f'amqp://{os.getenv("RABBITMQ_USER")}:{os.getenv("RABBITMQ_PASS")}@{os.getenv("RABBITMQ_HOST")}:5672//'
 CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
+
+
+# MINIO
+STORAGES = {
+    'default': {
+        'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+    },
+    'staticfiles': {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    },
+}
+
+AWS_ACCESS_KEY_ID = os.getenv('MINIO_ACCESS_KEY')
+AWS_SECRET_ACCESS_KEY = os.getenv('MINIO_SECRET_KEY')
+AWS_STORAGE_BUCKET_NAME = os.getenv('MINIO_BUCKET')
+
+AWS_S3_ENDPOINT_URL = f"http://{os.getenv('MINIO_ENDPOINT')}"
+AWS_S3_REGION_NAME = 'us-east-1'
+AWS_S3_ADDRESSING_STYLE = 'path'
+AWS_S3_SIGNATURE_VERSION = 's3v4'
+AWS_S3_USE_SSL = False
+AWS_S3_VERIFY = False
