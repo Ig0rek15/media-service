@@ -21,7 +21,7 @@ services:
       RABBITMQ_DEFAULT_PASS: rabbit
     ports:
       - "5672:5672"
-      - "15672:15672"  # web UI
+      - "15672:15672"
 
   redis:
     image: redis:7
@@ -51,7 +51,11 @@ services:
     command: >
       bash -c "
       python manage.py migrate &&
-      gunicorn project.wsgi:application -b 0.0.0.0:8000
+      gunicorn project.wsgi:application
+      --bind 0.0.0.0:8000
+      --limit-request-line 8190
+      --limit-request-field_size 16384
+      --limit-request-fields 200
       "
     volumes:
       - ..:/app
