@@ -1,9 +1,15 @@
-from django.core.files.storage import default_storage
 from rest_framework import viewsets, status
+from  rest_framework.decorators import action
 from rest_framework.response import Response
+from django.core.files.storage import default_storage
+from django.shortcuts import get_object_or_404
 
 from .models import MediaJob
-from .serializers import MediaUploadSerializer
+from .serializers import (
+    MediaUploadSerializer,
+    MediaJobSerializer,
+    MediaRetrySerializer
+)
 from .tasks import process_media
 
 
@@ -14,13 +20,11 @@ class MediaViewSet(viewsets.ViewSet):
 
         uploaded_file = serializer.validated_data['file']
 
-        # сохранение в minio
         storage_path = default_storage.save(
             f'uploads/{uploaded_file.name}',
             uploaded_file
         )
 
-        # сохранение пути до файла и его состояния
         job = MediaJob.objects.create(
             original_file=storage_path,
             file_name=uploaded_file.name,
@@ -29,7 +33,6 @@ class MediaViewSet(viewsets.ViewSet):
             status=MediaJob.STATUS_QUEUED,
         )
 
-        # отправка задачи в очередь
         process_media.delay(job.id)
 
         return Response(
@@ -38,4 +41,30 @@ class MediaViewSet(viewsets.ViewSet):
                 'status': job.status,
             },
             status=status.HTTP_201_CREATED
+        )
+
+    def retrieve(self, request, pk=None):
+        job = get_object_or_404(MediaJob, pk=pk)
+        serializer = MediaJobSerializer(job)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def retry(self, request, pk=None):
+        serializer = MediaRetrySerializer(data={'job_id': pk})
+        serializer.is_valid(raise_exception=True)
+
+        job = serializer.validated_data['job']
+
+        job.status = MediaJob.STATUS_QUEUED
+        job.error = None
+        job.save(update_fields=['status', 'error', 'updated_at'])
+
+        process_media.delay(job.id)
+
+        return Response(
+            {
+                'job_id': str(job.id),
+                'status': job.status,
+                'attempts': job.attempts,
+            }
         )

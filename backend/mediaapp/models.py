@@ -5,6 +5,8 @@ from django.conf import settings
 
 
 class MediaJob(models.Model):
+    MAX_ATTEMPTS = 3
+
     STATUS_QUEUED = 'queued'
     STATUS_PROCESSING = 'processing'
     STATUS_DONE = 'done'
@@ -30,7 +32,6 @@ class MediaJob(models.Model):
         on_delete=models.SET_NULL
     )
 
-    # путь: uploads/2025/12/11/photo.jpg
     original_file = models.CharField(
         max_length=1024,
         help_text='Path or key in object storage'
@@ -46,7 +47,10 @@ class MediaJob(models.Model):
         default=STATUS_QUEUED
     )
 
-    attempts = models.PositiveSmallIntegerField(default=0)
+    attempts = models.PositiveSmallIntegerField(
+        default=0,
+        help_text='How many times the job was executed'
+    )
 
     result = models.JSONField(
         null=True,
