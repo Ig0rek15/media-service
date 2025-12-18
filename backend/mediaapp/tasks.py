@@ -1,44 +1,45 @@
-import time
-
-from django.core.files.storage import default_storage
+from celery import shared_task
+from django.db import transaction
 
 from .models import MediaJob
-from project.celery import app
+from .exceptions import RetryableMediaError, FatalMediaError
 
 
-@app.task(
+@shared_task(
     bind=True,
-    queue='media.default',
     max_retries=3,
-    retry_backoff=5,
-    retry_jitter=True,
+    queue='media.default'
 )
 def process_media(self, job_id):
-    job = MediaJob.objects.get(id=job_id)
-
     try:
-        job.status = MediaJob.STATUS_PROCESSING
-        job.save(update_fields=['status'])
+        with transaction.atomic():
+            job = MediaJob.objects.select_for_update().get(id=job_id)
 
-        # Симуляция обработки
-        time.sleep(3)
+            if job.attempts >= MediaJob.MAX_ATTEMPTS:
+                raise FatalMediaError('Retry limit exceeded')
 
-        with default_storage.open(job.original_file, 'rb') as f:
-            f.read(1024)
+            job.attempts += 1
+            job.status = MediaJob.STATUS_PROCESSING
+            job.save(update_fields=['attempts', 'status'])
 
-        job.status = MediaJob.STATUS_DONE
-        job.error = None
+        # ==== здесь будет реальная обработка ====
+        # пока симулируем
+        raise RetryableMediaError('Temporary processing failure')
+
+    except RetryableMediaError as exc:
+        job.status = MediaJob.STATUS_FAILED
+        job.error = str(exc)
+        job.save(update_fields=['status', 'error'])
+
+        raise self.retry(exc=exc, countdown=5)
+
+    except FatalMediaError as exc:
+        job.status = MediaJob.STATUS_FAILED
+        job.error = str(exc)
         job.save(update_fields=['status', 'error'])
 
     except Exception as exc:
-        job.attempts += 1
-        job.error = str(exc)
-
-        if self.request.retries < self.max_retries:
-            job.status = MediaJob.STATUS_QUEUED
-            job.save(update_fields=['attempts', 'status', 'error'])
-            raise self.retry(exc=exc)
-
+        # неизвестная ошибка = fatal
         job.status = MediaJob.STATUS_FAILED
-        job.save(update_fields=['attempts', 'status', 'error'])
-        raise
+        job.error = f'Unexpected error: {exc}'
+        job.save(update_fields=['status', 'error'])

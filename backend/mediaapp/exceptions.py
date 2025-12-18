@@ -11,3 +11,24 @@ class MediaAPIException(APIException):
         if status_code is not None:
             self.status_code = status_code
         super().__init__(detail or self.default_detail)
+
+
+class MediaProcessingError(Exception):
+    """
+    Базовая ошибка обработки медиа.
+    """
+    pass
+
+
+class RetryableMediaError(MediaProcessingError):
+    """
+    Ошибка, при которой задачу можно повторить.
+    """
+    pass
+
+
+class FatalMediaError(MediaProcessingError):
+    """
+    Ошибка, при которой повторять задачу бессмысленно.
+    """
+    pass
