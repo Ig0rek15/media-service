@@ -40,6 +40,15 @@ class MediaJob(models.Model):
     file_name = models.CharField(max_length=255)
     content_type = models.CharField(max_length=100)
     size = models.BigIntegerField()
+    preset = models.CharField(
+        max_length=50,
+        default='default'
+    )
+    file_hash = models.CharField(
+        max_length=64,
+        db_index=True,
+        help_text='SHA256 hash of original file'
+    )
 
     status = models.CharField(
         max_length=20,
@@ -65,6 +74,12 @@ class MediaJob(models.Model):
 
     class Meta:
         ordering = ('-created_at',)
+        constraints = [
+            models.UniqueConstraint(
+                fields=['file_hash', 'preset'],
+                name='unique_file_hash_preset'
+            )
+        ]
 
     def __str__(self) -> str:
         return f'{self.id} ({self.status})'

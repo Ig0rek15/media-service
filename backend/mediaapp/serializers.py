@@ -2,23 +2,45 @@ from rest_framework import serializers, status
 
 from .models import MediaJob
 from .exceptions import MediaAPIException
+from .presets import IMAGE_PRESETS
+from .presigned import generate_presigned_url
 
 
 class MediaUploadSerializer(serializers.Serializer):
     file = serializers.FileField()
+    preset = serializers.CharField(
+        required=False,
+        default='default'
+    )
+
+    def validate_preset(self, value):
+        if value not in IMAGE_PRESETS:
+            raise serializers.ValidationError('Unknown preset')
+        return value
 
 
 class MediaJobSerializer(serializers.ModelSerializer):
+    result_urls = serializers.SerializerMethodField()
+
     class Meta:
         model = MediaJob
         fields = (
             'id',
             'status',
-            'result',
             'error',
+            'result_urls',
             'created_at',
             'updated_at',
         )
+
+    def get_result_urls(self, obj):
+        if not obj.result:
+            return None
+
+        return {
+            name: generate_presigned_url(path)
+            for name, path in obj.result.items()
+        }
 
 
 class MediaRetrySerializer(serializers.Serializer):
