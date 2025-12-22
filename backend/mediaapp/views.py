@@ -22,6 +22,7 @@ class MediaViewSet(viewsets.ViewSet):
 
         uploaded_file = serializer.validated_data['file']
         preset = serializer.validated_data['preset']
+        callback_url = serializer.validated_data.get('callback_url')
 
         file_hash = compute_file_hash(uploaded_file)
 
@@ -53,6 +54,7 @@ class MediaViewSet(viewsets.ViewSet):
                 preset=preset,
                 file_hash=file_hash,
                 status=MediaJob.STATUS_QUEUED,
+                callback_url=callback_url,
             )
         except IntegrityError:
             job = MediaJob.objects.get(

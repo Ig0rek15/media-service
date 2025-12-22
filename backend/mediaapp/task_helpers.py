@@ -61,4 +61,3 @@ def fail_job(
         job.error = str(exc)
 
     job.save(update_fields=['status', 'error'])
-

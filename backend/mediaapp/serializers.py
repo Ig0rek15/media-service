@@ -12,6 +12,11 @@ class MediaUploadSerializer(serializers.Serializer):
         required=False,
         default='default'
     )
+    callback_url = serializers.URLField(
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+    )
 
     def validate_preset(self, value):
         if value not in IMAGE_PRESETS:
@@ -37,10 +42,13 @@ class MediaJobSerializer(serializers.ModelSerializer):
         if not obj.result:
             return None
 
-        return {
-            name: generate_presigned_url(path)
-            for name, path in obj.result.items()
-        }
+        urls = {}
+
+        for name, value in obj.result.items():
+            if isinstance(value, str) and '/' in value:
+                urls[name] = generate_presigned_url(value)
+
+        return urls
 
 
 class MediaRetrySerializer(serializers.Serializer):

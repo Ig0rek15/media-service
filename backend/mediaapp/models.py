@@ -67,6 +67,12 @@ class MediaJob(models.Model):
         help_text='Generated artifacts, e.g. {thumb: url, medium: url}'
     )
 
+    callback_url = models.URLField(
+        null=True,
+        blank=True,
+        help_text='Webhook URL to notify on completion'
+    )
+
     error = models.TextField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
