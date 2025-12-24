@@ -37,3 +37,7 @@ vine==5.1.0
 wcwidth==0.2.14
 
 gunicorn
+
+pytest
+pytest-django
+pytest-mock
