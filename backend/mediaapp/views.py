@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from  rest_framework.decorators import action
+from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.core.files.storage import default_storage
 from django.db import IntegrityError

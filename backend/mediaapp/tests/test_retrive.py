@@ -1,7 +1,5 @@
 import pytest
 
-from mediaapp.models import MediaJob
-
 
 @pytest.mark.django_db
 def test_retrieve_job(
